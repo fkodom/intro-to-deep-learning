@@ -93,11 +93,25 @@ def zero_grads(model: nn.Module):
         parameter.grad = None
 
 
+def zero_gradients(model: nn.Module):
+    """Zero out all existing gradients, so that PyTorch doesn't just add to them
+    each time we call 'loss.backward(). A technicality of working with PyTorch.
+    """
+    for parameter in model.parameters():
+        if parameter.grad is not None:
+            parameter.grad.zero_()
+
+
 def sgd_update(
     model: nn.Module,
     batch: Tuple[Tensor, Tensor],
-    learning_rate: float = 3e-4,
+    learning_rate: float = 1e-2,
 ) -> float:
+    # Technicality -- we have to "zero out" all of the existing gradients.
+    # Otherwise, PyTorch will carry them over from the last update, and every call
+    # to 'loss.backward()' will just add to the existing gradients.
+    zero_gradients(model)
+
     inputs, labels = batch
     scores = model(inputs)
     loss = loss_function(scores, labels)
@@ -126,14 +140,14 @@ def test_accuracy(model: nn.Module, test_dataloader: DataLoader) -> float:
 model = MnistMLP()
 train_dataloader = get_mnist_dataloader(train=True, batch_size=64)
 
-# Train for 5 epochs
-for epoch in range(5):
+# Train for 20 epochs
+for epoch in range(20):
     # Aggregate losses from all mini-batches, and only print the
     # average loss at the end of each epoch.
     losses = []
 
     for batch in train_dataloader:
-        loss = sgd_update(model, batch, learning_rate=3e-4)
+        loss = sgd_update(model, batch, learning_rate=1e-2)
         losses.append(loss)
 
     avg_loss = sum(losses) / len(losses)
@@ -145,9 +159,24 @@ accuracy = test_accuracy(model, test_dataloader)
 print(f"Test accuracy: {accuracy:.3f}")
 
 # Results from my local run:
-#   Epoch 0: Loss = 0.058
-#   Epoch 1: Loss = 0.034
-#   Epoch 2: Loss = 0.028
-#   Epoch 3: Loss = 0.026
-#   Epoch 4: Loss = 0.024
-#   Test accuracy: 0.917
+#   Epoch 0: Loss = 0.072
+#   Epoch 1: Loss = 0.052
+#   Epoch 2: Loss = 0.046
+#   Epoch 3: Loss = 0.042
+#   Epoch 4: Loss = 0.040
+#   Epoch 5: Loss = 0.038
+#   Epoch 6: Loss = 0.036
+#   Epoch 7: Loss = 0.034
+#   Epoch 8: Loss = 0.033
+#   Epoch 9: Loss = 0.031
+#   Epoch 10: Loss = 0.030
+#   Epoch 11: Loss = 0.029
+#   Epoch 12: Loss = 0.028
+#   Epoch 13: Loss = 0.027
+#   Epoch 14: Loss = 0.026
+#   Epoch 15: Loss = 0.026
+#   Epoch 16: Loss = 0.025
+#   Epoch 17: Loss = 0.024
+#   Epoch 18: Loss = 0.024
+#   Epoch 19: Loss = 0.023
+#   Test accuracy: 0.924
